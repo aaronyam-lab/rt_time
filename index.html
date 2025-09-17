@@ -1,47 +1,8 @@
-<script type="text/javascript">
-        var gk_isXlsx = false;
-        var gk_xlsxFileLookup = {};
-        var gk_fileData = {};
-        function filledCell(cell) {
-          return cell !== '' && cell != null;
-        }
-        function loadFileData(filename) {
-        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
-            try {
-                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
-                var firstSheetName = workbook.SheetNames[0];
-                var worksheet = workbook.Sheets[firstSheetName];
-
-                // Convert sheet to JSON to filter blank rows
-                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
-                // Filter out blank rows (rows where all cells are empty, null, or undefined)
-                var filteredData = jsonData.filter(row => row.some(filledCell));
-
-                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
-                var headerRowIndex = filteredData.findIndex((row, index) =>
-                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
-                );
-                // Fallback
-                if (headerRowIndex === -1 || headerRowIndex > 25) {
-                  headerRowIndex = 0;
-                }
-
-                // Convert filtered JSON back to CSV
-                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
-                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
-                return csv;
-            } catch (e) {
-                console.error(e);
-                return "";
-            }
-        }
-        return gk_fileData[filename] || "";
-        }
-        </script><!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-HK">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
     <title>輕鐵到站時間</title>
     <style>
         body {
@@ -100,12 +61,41 @@
         }
         .train-1 { background-color: #ff9800; } /* 1 卡車 */
         .train-2 { background-color: #4CAF50; } /* 2 卡車 */
+
+        /* 響應式設計：自動適應螢幕寬度，自動放大/縮放以顯示最闊內容 */
+        @media (max-width: 768px) {
+            body {
+                margin: 20px 0 20px 0; /* 行動裝置移除左邊距 */
+                font-size: 14px;
+            }
+            table {
+                width: 100%; /* 表格全寬 */
+                font-size: 12px; /* 縮小字體以適配 */
+            }
+            th, td {
+                padding: 4px; /* 減少內邊距 */
+            }
+            .station {
+                font-size: 1em;
+            }
+            #clock {
+                font-size: 1.2em;
+            }
+            .update-btn {
+                width: 100%; /* 按鈕全寬 */
+                margin-bottom: 10px;
+            }
+            .train-icon {
+                height: 16px;
+                width: 32px; /* 縮小圖示 */
+            }
+        }
     </style>
 </head>
 <body>
     <h1>輕鐵到站時間</h1>
     <button class="update-btn" onclick="updateAllData()">更新數據</button>
-    <div id="clock">實時時間：10:15</div>
+    <div id="clock">實時時間：2025-09-17 23:42:31 HKT</div>
 
     <div class="station">1) 兆禧站 (Siu Hei) - 1號月台</div>
     <p id="station1-time" class="loading">正在加載...</p>
@@ -209,16 +199,19 @@
             }
         }
 
-        // 實時時鐘 (HKT)
+        // 實時時鐘 (HKT, 同步香港時間)
         function updateClock() {
             const now = new Date().toLocaleString('zh-HK', { timeZone: 'Asia/Hong_Kong', hour12: false });
-            document.getElementById('clock').textContent = `實時時間：${now}`;
+            document.getElementById('clock').textContent = `實時時間：${now} HKT`;
         }
         setInterval(updateClock, 1000);
         updateClock(); // 初始更新
 
         // 初始加載數據
         document.addEventListener('DOMContentLoaded', updateAllData);
+
+        // 每分鐘自動更新數據
+        setInterval(updateAllData, 60000);
     </script>
 </body>
 </html>
