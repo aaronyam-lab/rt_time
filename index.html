@@ -1,0 +1,224 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>輕鐵到站時間</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px 0 20px 100px; /* 左邊留 100px 空間 */
+            background-color: #f0f4f8; /* 淺藍背景 */
+        }
+        table {
+            width: 90%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            background-color: #ffffff; /* 白色表格背景 */
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* 輕微陰影 */
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+            color: #333; /* 深灰文字 */
+        }
+        th {
+            background-color: #4CAF50; /* 綠色表頭 */
+            color: white;
+        }
+        .station {
+            font-size: 1.2em;
+            font-weight: bold;
+            margin-top: 20px;
+            color: #e91e63; /* 粉紅站名 */
+        }
+        .update-btn {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            background-color: #ff5722; /* 橙色按鈕 */
+            color: white;
+            border: none;
+            border-radius: 4px;
+        }
+        .update-btn:hover {
+            background-color: #f44336; /* 紅色 hover */
+        }
+        #clock {
+            font-size: 1.5em;
+            margin: 10px 0;
+            color: #2196F3; /* 藍色時鐘 */
+        }
+        .loading { color: #888; }
+        .error { color: #f44336; /* 紅色錯誤訊息 */ }
+        .train-icon {
+            height: 20px;
+            width: 40px; /* 長方形 */
+            vertical-align: middle;
+            margin-right: 5px;
+            display: inline-block;
+        }
+        .train-1 { background-color: #ff9800; } /* 1 卡車 */
+        .train-2 { background-color: #4CAF50; } /* 2 卡車 */
+    </style>
+</head>
+<body>
+    <h1>輕鐵到站時間</h1>
+    <button class="update-btn" onclick="updateAllData()">更新數據</button>
+    <div id="clock">實時時間：10:15</div>
+
+    <div class="station">1) 兆禧站 (Siu Hei) - 1號月台</div>
+    <p id="station1-time" class="loading">正在加載...</p>
+    <div id="station1-content" class="loading">正在加載數據...</div>
+
+    <div class="station">2) 屯門站 (Tuen Mun) 去 屯門碼頭</div>
+    <p id="station2-time" class="loading">正在加載...</p>
+    <div id="station2-content" class="loading">正在加載數據...</div>
+
+    <div class="station">3) 杯渡站 (Pui To) 去 屯門碼頭</div>
+    <p id="station3-time" class="loading">正在加載...</p>
+    <div id="station3-content" class="loading">正在加載數據...</div>
+
+    <div class="station">4) 市中心站 (Town Centre) 去 屯門碼頭</div>
+    <p id="station4-time" class="loading">正在加載...</p>
+    <div id="station4-content" class="loading">正在加載數據...</div>
+
+    <div class="station">5) 安定站 (On Ting) 去 屯門碼頭</div>
+    <p id="station5-time" class="loading">正在加載...</p>
+    <div id="station5-content" class="loading">正在加載數據...</div>
+
+    <div class="station">6) 屯門醫院 (Tuen Mun Hospital) 去 屯門碼頭</div>
+    <p id="station6-time" class="loading">正在加載...</p>
+    <div id="station6-content" class="loading">正在加載數據...</div>
+
+    <script>
+        const stations = [
+            { id: 240, name: 'station1', targets: [], platform: 1, destFilter: false }, // 兆禧站, platform 1, no dest filter
+            { id: 295, name: 'station2', targets: ['Tuen Mun Ferry Pier'], platform: 2, destFilter: true }, // 屯門站, platform 2
+            { id: 300, name: 'station3', targets: ['Tuen Mun Ferry Pier'], platform: null, destFilter: true }, // 杯渡站
+            { id: 280, name: 'station4', targets: ['Tuen Mun Ferry Pier'], platform: null, destFilter: true }, // 市中心站
+            { id: 270, name: 'station5', targets: ['Tuen Mun Ferry Pier'], platform: null, destFilter: true }, // 安定站
+            { id: 90, name: 'station6', targets: ['Tuen Mun Ferry Pier'], platform: null, destFilter: true }  // 屯門醫院
+        ];
+
+        async function fetchData(stationId) {
+            try {
+                const response = await fetch(`https://rt.data.gov.hk/v1/transport/mtr/lrt/getSchedule?station_id=${stationId}`);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return await response.json();
+            } catch (error) {
+                console.error('Fetch error:', error);
+                throw error;
+            }
+        }
+
+        function buildTable(platforms, targets, destFilter) {
+            let html = '<table><tr><th>月台</th><th>路線</th><th>目的地</th><th>車卡數</th><th>到站時間</th></tr>';
+            let hasData = false;
+            platforms.forEach(plat => {
+                let filteredRoutes = plat.route_list;
+                if (destFilter && targets.length > 0) {
+                    filteredRoutes = filteredRoutes.filter(r => targets.includes(r.dest_en));
+                }
+                filteredRoutes.forEach(route => {
+                    hasData = true;
+                    const trainLength = parseInt(route.train_length);
+                    let trainIcon = `<span class="train-icon ${trainLength === 1 ? 'train-1' : 'train-2'}"></span>`;
+                    html += `<tr><td>${plat.platform_id}</td><td>${route.route_no}</td><td>${route.dest_ch}</td><td>${trainIcon.repeat(trainLength)}</td><td>${route.time_ch}</td></tr>`;
+                });
+            });
+            html += '</table>';
+            if (!hasData) {
+                html = '<p>無符合數據</p>';
+            }
+            return html;
+        }
+
+        async function updateStation(stationConfig) {
+            const timeEl = document.getElementById(`${stationConfig.name}-time`);
+            const contentEl = document.getElementById(`${stationConfig.name}-content`);
+            if (!timeEl || !contentEl) {
+                console.error('Element not found for station:', stationConfig.name);
+                return;
+            }
+            try {
+                const data = await fetchData(stationConfig.id);
+                if (data.status !== 1) {
+                    throw new Error('API status not normal');
+                }
+                let filteredPlatforms = data.platform_list;
+                if (stationConfig.platform !== null) {
+                    filteredPlatforms = filteredPlatforms.filter(p => p.platform_id === stationConfig.platform);
+                }
+                const tableHtml = buildTable(filteredPlatforms, stationConfig.targets, stationConfig.destFilter);
+                contentEl.innerHTML = tableHtml;
+                timeEl.textContent = `實時更新時間：${data.system_time}`;
+                timeEl.className = '';
+            } catch (error) {
+                contentEl.innerHTML = `<p class="error">API 查詢失敗：${error.message}。請稍後重試或檢查官方 MTR 應用程式。</p>`;
+                timeEl.textContent = '更新失敗';
+                timeEl.className = 'error';
+            }
+        }
+
+        async function updateAllData() {
+            for (let station of stations) {
+                await updateStation(station);
+            }
+        }
+
+        // 實時時鐘 (HKT)
+        function updateClock() {
+            const now = new Date().toLocaleString('zh-HK', { timeZone: 'Asia/Hong_Kong', hour12: false });
+            document.getElementById('clock').textContent = `實時時間：${now}`;
+        }
+        setInterval(updateClock, 1000);
+        updateClock(); // 初始更新
+
+        // 初始加載數據
+        document.addEventListener('DOMContentLoaded', updateAllData);
+    </script>
+</body>
+</html>
