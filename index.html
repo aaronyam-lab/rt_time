@@ -7,8 +7,9 @@
     <style>
         body {
             font-family: Arial, sans-serif;
-            margin: 20px 0 20px 100px; /* 左邊留 100px 空間 */
+            margin: 20px 0 20px 50px; /* 調整左邊距，減少偏右問題 */
             background-color: #f0f4f8; /* 淺藍背景 */
+            text-align: left; /* 確保內容居左 */
         }
         table {
             width: 90%;
@@ -41,12 +42,13 @@
             color: white;
             border: none;
             border-radius: 4px;
+            margin-bottom: 10px;
         }
         .update-btn:hover {
             background-color: #f44336; /* 紅色 hover */
         }
         #clock {
-            font-size: 1.5em;
+            font-size: 1em; /* 減小時間字體 */
             margin: 10px 0;
             color: #2196F3; /* 藍色時鐘 */
         }
@@ -58,6 +60,7 @@
             vertical-align: middle;
             margin-right: 5px;
             display: inline-block;
+            border: 1px solid #000; /* 增加邊框使 2 卡列車更明顯 */
         }
         .train-1 { background-color: #ff9800; } /* 1 卡車 */
         .train-2 { background-color: #4CAF50; } /* 2 卡車 */
@@ -65,7 +68,7 @@
         /* 響應式設計：自動適應螢幕寬度，自動放大/縮放以顯示最闊內容 */
         @media (max-width: 768px) {
             body {
-                margin: 20px 0 20px 0; /* 行動裝置移除左邊距 */
+                margin: 10px 0 10px 0; /* 行動裝置移除左邊距 */
                 font-size: 14px;
             }
             table {
@@ -79,15 +82,16 @@
                 font-size: 1em;
             }
             #clock {
-                font-size: 1.2em;
+                font-size: 0.9em; /* 進一步縮小時間字體 */
             }
             .update-btn {
                 width: 100%; /* 按鈕全寬 */
-                margin-bottom: 10px;
+                margin-bottom: 5px;
             }
             .train-icon {
                 height: 16px;
                 width: 32px; /* 縮小圖示 */
+                border: 1px solid #000; /* 保持邊框 */
             }
         }
     </style>
@@ -95,7 +99,7 @@
 <body>
     <h1>輕鐵到站時間</h1>
     <button class="update-btn" onclick="updateAllData()">更新數據</button>
-    <div id="clock">實時時間：2025-09-17 23:42:31 HKT</div>
+    <div id="clock">實時時間：2025-09-18 09:23:00 HKT</div>
 
     <div class="station">1) 兆禧站 (Siu Hei) - 1號月台</div>
     <p id="station1-time" class="loading">正在加載...</p>
